@@ -1,0 +1,25 @@
+---
+- name: Provision a whitelist configuration for the Azure Firewall
+  hosts: localhost
+  connection: local
+  vars:
+    resource_group: webapp-rg
+    firewall_name: fw
+    whitelist_file: whitelist.yml # a YAML file that contains the list of services and ports to be allowed
+  tasks:
+    - name: Read the whitelist file
+      include_vars:
+        file: "{{ whitelist_file }}"
+        name: whitelist
+
+    - name: Create a list of application rules from the whitelist
+      set_fact:
+        app_rules: "{{ app_rules | default([]) + [item.value | combine({'name': item.key})] }}"
+      loop: "{{ whitelist | dict2items }}"
+
+    - name: Create a list of network rules from the whitelist
+      set_fact:
+        net_rules: "{{ net_rules | default([]) + [item.value | combine({'name': item.key, 'protocols': ['TCP']})] }}"
+      loop: "{{ whitelist | dict2items }}"
+
+    - name: Create an Azure Firewall
